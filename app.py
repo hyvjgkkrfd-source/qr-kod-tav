@@ -4,7 +4,6 @@ import qrcode
 import re
 import os
 import shutil
-from PIL import Image
 
 # Sayfa Genişliği ve Kurumsal Başlık Ayarları
 st.set_page_config(
@@ -61,7 +60,7 @@ if yuklenen_dosya is not None:
         orijinal_sutunlar = [str(col).replace('_x0000_', '').strip() for col in df.columns]
         df.columns = orijinal_sutunlar
         
-        # Akıllı Sütun Eşleştirmeleri
+        # Akıllı Sütun Eşleştirmeleri (Hatalı kısım tamamen düzeltildi)
         isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad'])
         unvan_sutunu = sutun_bul(orijinal_sutunlar, ['ünvan', 'unvan', 'title', 'görev', 'gorev'])
         sirket_sutunu = sutun_bul(orijinal_sutunlar, ['şirket', 'sirket', 'org', 'company', 'kurum'])
@@ -69,7 +68,7 @@ if yuklenen_dosya is not None:
         adres_sutunu = sutun_bul(orijinal_sutunlar, ['adres', 'address', 'lokasyon'])
         telefon_sutunu = sutun_bul(orijinal_sutunlar, ['iletişim', 'iletisim', 'telefon', 'tel', 'gsm', 'cep', 'phone'])
 
-        if not i̇sim_sutunu:
+        if not isim_sutunu:
             st.error("❌ İsim Sütunu Algılanamadı: Dosyanızda ad-soyad içeren sütunu otomatik bulamadık. Lütfen sütun başlığını kontrol edin.")
         else:
             st.success(f"📋 Dosya algılandı! İsimler **'{isim_sutunu}'** sütunundan okunacak. Toplam **{len(df)}** satır veri var.")
@@ -87,7 +86,7 @@ if yuklenen_dosya is not None:
                 
                 toplam_satir = len(df)
                 uretilen_adet = 0
-                gecerli_qr_listesi = [] # Önizleme için hafızada tutacağız
+                gecerli_qr_listesi = [] # Önizleme galerisi için geçici liste
 
                 for index, row in df.iterrows():
                     yuzde = int(((index + 1) / toplam_satir) * 100)
@@ -166,7 +165,7 @@ if yuklenen_dosya is not None:
                     dosya_yolu = f"{klasor_adi}/{temiz_ad}_{temiz_soyad}.png"
                     img.save(dosya_yolu)
                     
-                    # Önizleme listesine ekle
+                    # Önizleme için bilgileri listeye kaydet
                     gecerli_qr_listesi.append({
                         "isim": tam_isim,
                         "unvan": unvan if unvan else "Personel",
@@ -180,9 +179,8 @@ if yuklenen_dosya is not None:
                 with open(f"{klasor_adi}.zip", "rb") as f:
                     zip_verisi = f.read()
                 
-                # Temizlik
-                shutil.rmtree(klasor_adi)
-                os.remove(f"{klasor_adi}.zip")
+                # Zip dosyasını okuduktan sonra klasörü temizliyoruz ama resimleri Streamlit göstermeden önce silmiyoruz
+                shutil.make_archive(klasor_adi, 'zip', klasor_adi)
                 
                 durum_mesaji.empty()
                 st.balloons()
@@ -197,20 +195,23 @@ if yuklenen_dosya is not None:
                     use_container_width=True
                 )
                 
-                # CANLI ÖNİZLEME GALERİSİ (İstediğin yeni görsel alan)
+                # CANLI ÖNİZLEME GALERİSİ
                 st.markdown("### 🔍 Üretilen QR Kodların Önizlemesi")
                 st.caption("Aşağıda sistem tarafından yeni oluşturulan kartların önizlemesini görebilirsiniz:")
                 
-                # QR kodları şık bir ızgara (grid) halinde yan yana 3'erli gösterelim
                 cols = st.columns(3)
                 for idx, item in enumerate(gecerli_qr_listesi):
                     col_secim = cols[idx % 3]
                     with col_secim:
-                        # Görseli açıp arayüze basıyoruz
-                        # Klasör silindiği için hafızadaki nesne üzerinden veya geçici listeden basıyoruz
                         st.image(item["dosya"], use_container_width=True)
                         st.markdown(f"<div style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</div>", unsafe_allow_html=True)
                         st.markdown(f"<div style='text-align: center; font-size: 12px; color: #7a8b9c; margin-bottom: 20px;'>{item['unvan']}</div>", unsafe_allow_html=True)
+                
+                # Galeri basıldıktan sonra diskteki geçici klasörü temizliyoruz
+                if os.path.exists(klasor_adi):
+                    shutil.rmtree(klasor_adi)
+                if os.path.exists(f"{klasor_adi}.zip"):
+                    os.remove(f"{klasor_adi}.zip")
 
     except Exception as e:
         st.error(f"⚠️ Sistemde bir sorun oluştu: {e}")
