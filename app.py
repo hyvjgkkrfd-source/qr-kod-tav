@@ -37,7 +37,7 @@ st.markdown("""
     <div style='text-align: center; padding-bottom: 20px;'>
         <h1 style='color: #0b2545;'>📱 TAV Akıllı QR Kod Üretim Merkezi</h1>
         <p style='color: #5a6b7c; font-size: 16px;'>
-            Sütun isimlerinden ve yazım hatalarından bağımsız, akıllı vCard QR kod üretim paneli.
+            Telefon Önizleme Modüllü Gelişmiş vCard Üretim Paneli
         </p>
     </div>
     <hr style='margin-top: 0; margin-bottom: 25px;'>
@@ -56,11 +56,10 @@ if yuklenen_dosya is not None:
         else:
             df = pd.read_excel(yuklenen_dosya)
         
-        # Sütun isimlerini normalize et
         orijinal_sutunlar = [str(col).replace('_x0000_', '').strip() for col in df.columns]
         df.columns = orijinal_sutunlar
         
-        # Akıllı Sütun Eşleştirmeleri (Hatalı kısım tamamen düzeltildi)
+        # Akıllı Sütun Eşleştirmeleri
         isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad'])
         unvan_sutunu = sutun_bul(orijinal_sutunlar, ['ünvan', 'unvan', 'title', 'görev', 'gorev'])
         sirket_sutunu = sutun_bul(orijinal_sutunlar, ['şirket', 'sirket', 'org', 'company', 'kurum'])
@@ -69,12 +68,11 @@ if yuklenen_dosya is not None:
         telefon_sutunu = sutun_bul(orijinal_sutunlar, ['iletişim', 'iletisim', 'telefon', 'tel', 'gsm', 'cep', 'phone'])
 
         if not isim_sutunu:
-            st.error("❌ İsim Sütunu Algılanamadı: Dosyanızda ad-soyad içeren sütunu otomatik bulamadık. Lütfen sütun başlığını kontrol edin.")
+            st.error("❌ Dosyanızda ad-soyad içeren sütun otomatik bulamadık. Lütfen sütun başlığını kontrol edin.")
         else:
-            st.success(f"📋 Dosya algılandı! İsimler **'{isim_sutunu}'** sütunundan okunacak. Toplam **{len(df)}** satır veri var.")
+            st.success(f"📋 Dosya algılandı! Toplam **{len(df)}** satır veri var.")
             
-            # Üretim Butonu
-            if st.button("🚀 Akıllı QR Kodları Toplu Üret", use_container_width=True):
+            if st.button("🚀 Akıllı QR Kodları ve Telefon Önizlemelerini Üret", use_container_width=True):
                 
                 klasor_adi = "TAV_QR_Kodlari"
                 if os.path.exists(klasor_adi):
@@ -86,7 +84,7 @@ if yuklenen_dosya is not None:
                 
                 toplam_satir = len(df)
                 uretilen_adet = 0
-                gecerli_qr_listesi = [] # Önizleme galerisi için geçici liste
+                gecerli_qr_listesi = []
 
                 for index, row in df.iterrows():
                     yuzde = int(((index + 1) / toplam_satir) * 100)
@@ -98,7 +96,6 @@ if yuklenen_dosya is not None:
                     
                     durum_mesaji.text(f"⏳ İşleniyor: {tam_isim}")
                     
-                    # İsim/Soyisim Akıllı Ayrıştırma
                     isim_parcalari = [p for p in tam_isim.split(' ') if p]
                     if len(isim_parcalari) >= 1:
                         soyad = isim_parcalari[-1]
@@ -106,16 +103,16 @@ if yuklenen_dosya is not None:
                     else:
                         continue
 
-                    # Dinamik veri çekimi
                     unvan = temizle(row.get(unvan_sutunu, '')) if unvan_sutunu else ""
                     sirket = temizle(row.get(sirket_sutunu, '')) if sirket_sutunu else ""
                     email = temizle(row.get(email_sutunu, '')) if email_sutunu else ""
+                    web_sitesi = "www.tavsecurity.com" # Varsayılan kurumsal web adresi
                     
                     adres = temizle(row.get(adres_sutunu, '')).replace('\n', ' ') if adres_sutunu else ""
                     adres = re.sub(r'\s+', ' ', adres)
                     
-                    # Telefon Temizleme Algoritması
-                    gsm_no = None
+                    # Telefon Temizleme
+                    gsm_no = ""
                     if telefon_sutunu:
                         iletisim_metni = str(row.get(telefon_sutunu, '')).strip()
                         if iletisim_metni and iletisim_metni.lower() != 'nan':
@@ -133,7 +130,7 @@ if yuklenen_dosya is not None:
                                 no_bul = re.search(r'([+\d][\d\s()\-.]+)', iletisim_metni)
                                 if no_bul: gsm_no = no_bul.group(1).strip()
 
-                    # vCard Oluşturma
+                    # vCard Blokları
                     vcard_satirlari = [
                         "BEGIN:VCARD",
                         "VERSION:3.0",
@@ -165,10 +162,14 @@ if yuklenen_dosya is not None:
                     dosya_yolu = f"{klasor_adi}/{temiz_ad}_{temiz_soyad}.png"
                     img.save(dosya_yolu)
                     
-                    # Önizleme için bilgileri listeye kaydet
+                    # Önizleme ve Kart detayları için verileri sakla
                     gecerli_qr_listesi.append({
                         "isim": tam_isim,
                         "unvan": unvan if unvan else "Personel",
+                        "sirket": sirket if sirket else "TAV",
+                        "telefon": gsm_no if gsm_no else "Belirtilmedi",
+                        "email": email if email else "Belirtilmedi",
+                        "adres": adres if adres else "Belirtilmedi",
                         "dosya": dosya_yolu
                     })
                     uretilen_adet += 1
@@ -178,9 +179,6 @@ if yuklenen_dosya is not None:
                 
                 with open(f"{klasor_adi}.zip", "rb") as f:
                     zip_verisi = f.read()
-                
-                # Zip dosyasını okuduktan sonra klasörü temizliyoruz ama resimleri Streamlit göstermeden önce silmiyoruz
-                shutil.make_archive(klasor_adi, 'zip', klasor_adi)
                 
                 durum_mesaji.empty()
                 st.balloons()
@@ -195,19 +193,57 @@ if yuklenen_dosya is not None:
                     use_container_width=True
                 )
                 
-                # CANLI ÖNİZLEME GALERİSİ
-                st.markdown("### 🔍 Üretilen QR Kodların Önizlemesi")
-                st.caption("Aşağıda sistem tarafından yeni oluşturulan kartların önizlemesini görebilirsiniz:")
+                # CANLI TELEFON ÖNİZLEME ALANI
+                st.markdown("### 🔍 Dijital Kartvizit Canlı Önizleme Paneli")
+                st.caption("QR kod okutulduğunda telefonda belirecek kurumsal kart yapısı:")
                 
-                cols = st.columns(3)
-                for idx, item in enumerate(gecerli_qr_listesi):
-                    col_secim = cols[idx % 3]
-                    with col_secim:
-                        st.image(item["dosya"], use_container_width=True)
-                        st.markdown(f"<div style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</div>", unsafe_allow_html=True)
-                        st.markdown(f"<div style='text-align: center; font-size: 12px; color: #7a8b9c; margin-bottom: 20px;'>{item['unvan']}</div>", unsafe_allow_html=True)
+                # Her personeli şık bir yan yana blok düzeninde gösterelim
+                for item in gecerli_qr_listesi:
+                    # Sol tarafta QR kod, sağ tarafta telefon arayüzü olacak şekilde 2 sütun
+                    col1, col2 = st.columns([1, 1.3])
+                    
+                    with col1:
+                        st.markdown("<br><br>", unsafe_allow_html=True)
+                        st.image(item["dosya"], width=230)
+                        st.markdown(f"<p style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</p>", unsafe_allow_html=True)
+                    
+                    with col2:
+                        # CSS ile Telefon Arayüzü (Mockup) Tasarımı
+                        st.markdown(f"""
+                        <div style="background-color: #f4f6f9; border: 12px solid #222; border-radius: 30px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 320px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); margin: 10px auto;">
+                            <div style="width: 70px; height: 70px; background-color: #0b2545; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin: 0 auto 10px auto;">
+                                {item['isim'][0]}
+                            </div>
+                            <div style="text-align: center; font-size: 18px; font-weight: bold; color: #111; margin-bottom: 2px;">{item['isim']}</div>
+                            <div style="text-align: center; font-size: 13px; color: #0076ff; font-weight: 500; margin-bottom: 15px;">{item['unvan']}</div>
+                            
+                            <hr style="border: 0; border-top: 1px solid #dcdcdc; margin: 10px 0;">
+                            
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 10px; color: #777; display: block; text-transform: uppercase;">Şirket</span>
+                                <span style="font-size: 13px; color: #222; font-weight: 500;">{item['sirket']}</span>
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 10px; color: #777; display: block; text-transform: uppercase;">Cep Telefonu</span>
+                                <span style="font-size: 13px; color: #0076ff; font-weight: 500;">{item['telefon']}</span>
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 10px; color: #777; display: block; text-transform: uppercase;">E-posta</span>
+                                <span style="font-size: 13px; color: #222;">{item['email']}</span>
+                            </div>
+                            <div style="margin-bottom: 5px;">
+                                <span style="font-size: 10px; color: #777; display: block; text-transform: uppercase;">Adres</span>
+                                <span style="font-size: 12px; color: #333; line-height: 1.3;">{item['adres']}</span>
+                            </div>
+                            
+                            <div style="background-color: #34c759; color: white; text-align: center; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: bold; margin-top: 15px; cursor: default;">
+                                ✓ Rehbere Kaydedilmeye Hazır
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    st.markdown("<hr style='border: 1px dashed #e2e8f0; margin: 30px 0;'>", unsafe_allow_html=True)
                 
-                # Galeri basıldıktan sonra diskteki geçici klasörü temizliyoruz
+                # Temizlik
                 if os.path.exists(klasor_adi):
                     shutil.rmtree(klasor_adi)
                 if os.path.exists(f"{klasor_adi}.zip"):
