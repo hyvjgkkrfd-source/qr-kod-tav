@@ -42,7 +42,7 @@ yuklenen_dosya = st.file_uploader(
 
 if yuklenen_dosya is not None:
     try:
-        # CRITICAL FIX: TAV şablonundaki üst boşlukları aşmak için dosyayı önce normal okuyoruz
+        # TAV şablonundaki üst boşlukları aşmak için dosyayı önce normal okuyoruz
         if yuklenen_dosya.name.endswith('.csv'):
             test_df = pd.read_csv(yuklenen_dosya, nrows=10)
         else:
@@ -95,7 +95,6 @@ if yuklenen_dosya is not None:
                 ilerleme_cubugu.progress(yuzde)
                 
                 tam_isim = temizle(row.get(isim_sutunu, ''))
-                # Eğer satır tamamen boşsa veya isim yoksa atla
                 if not tam_isim or tam_isim.lower() == 'nan':
                     continue
                 
@@ -114,25 +113,21 @@ if yuklenen_dosya is not None:
                 adres = temizle(row.get(adres_sutunu, '')).replace('\n', ' ') if adres_sutunu else ""
                 adres = re.sub(r'\s+', ' ', adres)
                 
-                # TAV Hücre Yapısına Özel Telefon Ayıklama Algoritması
+                # Telefon Ayıklama Algoritması
                 gsm_no = ""
                 if telefon_sutunu:
                     iletisim_metni = str(row.get(telefon_sutunu, '')).strip()
                     if iletisim_metni and iletisim_metni.lower() != 'nan':
-                        # Hücredeki satırları parçala
                         satirlar = re.split(r'[\n\r]+', iletisim_metni)
                         
-                        # 1. Öncelik: Mobil veya GSM yazan satırı ara
                         for satir in satirlar:
                             if any(k in satir.upper() for k in ['MOBİL', 'MOBIL', 'GSM', 'CEP']):
                                 no_bul = re.search(r'([\d\s()\-.]+)', satir.split(':')[-1])
                                 if no_bul:
                                     gsm_no = no_bul.group(1).strip()
-                                    # Başındaki olası gereksiz karakterleri temizle
                                     gsm_no = re.sub(r'^[^\d+]+', '', gsm_no)
                                     break
                         
-                        # 2. Öncelik: Mobil yoksa Tel/Telefon yazan satıra bak
                         if not gsm_no:
                             for satir in satirlar:
                                 if any(k in satir.upper() for k in ['TEL', 'TELEFON', 'PHONE']):
@@ -142,7 +137,6 @@ if yuklenen_dosya is not None:
                                         gsm_no = re.sub(r'^[^\d+]+', '', gsm_no)
                                         break
                         
-                        # 3. Öncelik: Hiçbir şey bulamazsan düz sayıları çek
                         if not gsm_no:
                             no_bul = re.search(r'([+\d][\d\s()\-.]+)', iletisim_metni)
                             if no_bul:
@@ -169,10 +163,10 @@ if yuklenen_dosya is not None:
                 vcard_satirlari.append("END:VCARD")
                 vcard = "\r\n".join(vcard_satirlari)
 
-                # QR Oluşturma
+                # QR Oluşturma (HATA VEREN KISIM DÜZELTİLDİ: qr.make(fit=True))
                 qr = qrcode.QRCode(box_size=8, border=4)
                 qr.add_data(vcard.encode('utf-8'))
-                qr.make(fit=fit:=True)
+                qr.make(fit=True)
                 img = qr.make_image(fill_color="black", back_color="white")
 
                 temiz_ad = dosya_adi_temizle(ad)
