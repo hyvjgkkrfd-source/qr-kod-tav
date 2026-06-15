@@ -57,7 +57,7 @@ if yuklenen_dosya is not None:
             df = pd.read_excel(yuklenen_dosya)
         
         orijinal_sutunlar = [str(col).replace('_x0000_', '').strip() for col in df.columns]
-        df.columns = orijinal_sutunlar
+        df.columns = original_sutunlar
         
         # Akıllı Sütun Eşleştirmeleri
         isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad'])
@@ -74,9 +74,13 @@ if yuklenen_dosya is not None:
             
             if st.button("🚀 Akıllı QR Kodları ve Telefon Önizlemelerini Üret", use_container_width=True):
                 
+                # Her üretimde temiz bir klasör açıyoruz ve SİLMİYORUZ (Streamlit görselleri okuyabilsin diye)
                 klasor_adi = "TAV_QR_Kodlari"
                 if os.path.exists(klasor_adi):
-                    shutil.rmtree(klasor_adi)
+                    try:
+                        shutil.rmtree(klasor_adi)
+                    except:
+                        pass
                 os.makedirs(klasor_adi, exist_ok=True)
                 
                 ilerleme_cubugu = st.progress(0)
@@ -201,11 +205,12 @@ if yuklenen_dosya is not None:
                     
                     with col1:
                         st.markdown("<br><br>", unsafe_allow_html=True)
-                        st.image(item["dosya"], width=230)
+                        # Dosya yolundan resmi okuyoruz (Hata vermemesi için korundu)
+                        if os.path.exists(item["dosya"]):
+                            st.image(item["dosya"], width=230)
                         st.markdown(f"<p style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</p>", unsafe_allow_html=True)
                     
                     with col2:
-                        # CRITICAL FIX: unsafe_allow_html=True eklenerek kodlar arayüze şıkça giydirildi
                         st.markdown(f"""
                         <div style="background-color: #f4f6f9; border: 12px solid #222; border-radius: 30px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 320px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); margin: 10px auto;">
                             <div style="width: 70px; height: 70px; background-color: #0b2545; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin: 0 auto 10px auto;">
@@ -240,9 +245,7 @@ if yuklenen_dosya is not None:
                         """, unsafe_allow_html=True)
                     st.markdown("<hr style='border: 1px dashed #e2e8f0; margin: 30px 0;'>", unsafe_allow_html=True)
                 
-                # Klasör temizleme işlemi önizlemeler çizildikten sonra yapılacak
-                if os.path.exists(klasor_adi):
-                    shutil.rmtree(klasor_adi)
+                # Temizlik ve ZIP silme işlemini tamamen her şey bittikten sonraya taşıdık
                 if os.path.exists(f"{klasor_adi}.zip"):
                     os.remove(f"{klasor_adi}.zip")
 
