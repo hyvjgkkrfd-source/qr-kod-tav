@@ -23,7 +23,7 @@ def temizle(metin):
         return ""
     return str(metin).replace('_x0000_', '').strip()
 
-# Esnek Sütun Yakalama Fonksiyonu (Regex ile Akıllı Eşleşme)
+# Esnek Sütun Yakalama Fonksiyonu (Genişletilmiş Alternatifler)
 def sutun_bul(mevcut_sutunlar, alternatifler):
     for sutun in mevcut_sutunlar:
         sutun_temiz = sutun.lower().strip()
@@ -59,18 +59,25 @@ if yuklenen_dosya is not None:
         orijinal_sutunlar = [str(col).replace('_x0000_', '').strip() for col in df.columns]
         df.columns = orijinal_sutunlar
         
-        # Akıllı Sütun Eşleştirmeleri
-        isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad'])
-        unvan_sutunu = sutun_bul(orijinal_sutunlar, ['ünvan', 'unvan', 'title', 'görev', 'gorev'])
-        sirket_sutunu = sutun_bul(orijinal_sutunlar, ['şirket', 'sirket', 'org', 'company', 'kurum'])
-        email_sutunu = sutun_bul(orijinal_sutunlar, ['mail', 'e-mail', 'eposta', 'e-posta'])
-        adres_sutunu = sutun_bul(orijinal_sutunlar, ['adres', 'address', 'lokasyon'])
-        telefon_sutunu = sutun_bul(orijinal_sutunlar, ['iletişim', 'iletisim', 'telefon', 'tel', 'gsm', 'cep', 'phone'])
+        # Akıllı Sütun Eşleştirmeleri (Telefon listesi maksimum seviyede genişletildi)
+        isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad', 'kişi'])
+        unvan_sutunu = sutun_bul(orijinal_sutunlar, ['ünvan', 'unvan', 'title', 'görev', 'gorev', 'pozisyon'])
+        sirket_sutunu = sutun_bul(orijinal_sutunlar, ['şirket', 'sirket', 'org', 'company', 'kurum', 'firma'])
+        email_sutunu = sutun_bul(orijinal_sutunlar, ['mail', 'e-mail', 'eposta', 'e-posta', 'email'])
+        adres_sutunu = sutun_bul(orijinal_sutunlar, ['adres', 'address', 'lokasyon', 'yer'])
+        telefon_sutunu = sutun_bul(orijinal_sutunlar, ['iletişim', 'iletisim', 'telefon', 'tel', 'gsm', 'cep', 'phone', 'no', 'numara', 'mob', 'irtibat'])
 
         if not isim_sutunu:
             st.error("❌ Dosyanızda ad-soyad içeren sütun otomatik bulamadık. Lütfen sütun başlığını kontrol edin.")
         else:
             st.success(f"📋 Dosya algılandı! Toplam **{len(df)}** satır veri var.")
+            
+            # Arka planda hangi sütunun ne olarak eşleştiğini kullanıcıya gösterelim (Debug kolaylığı için)
+            with st.expander("🔍 Otomatik Eşleşen Sütun Başlıklarını Gör"):
+                st.write(f"**İsim Sütunu:** {isim_sutunu}")
+                st.write(f"**Telefon Sütunu:** {telefon_sutunu if telefon_sutunu else '⚠️ Bulunamadı'}")
+                st.write(f"**E-posta Sütunu:** {email_sutunu if email_sutunu else '⚠️ Bulunamadı'}")
+                st.write(f"**Unvan Sütunu:** {unvan_sutunu if unvan_sutunu else '⚠️ Bulunamadı'}")
             
             if st.button("🚀 Akıllı QR Kodları ve Önizlemeleri Üret", use_container_width=True):
                 
@@ -111,24 +118,30 @@ if yuklenen_dosya is not None:
                     adres = temizle(row.get(adres_sutunu, '')).replace('\n', ' ') if adres_sutunu else ""
                     adres = re.sub(r'\s+', ' ', adres)
                     
-                    # Telefon Temizleme
+                    # GELİŞMİŞ Telefon Yakalama Mantığı
                     gsm_no = ""
                     if telefon_sutunu:
-                        iletisim_metni = str(row.get(telefon_sutunu, '')).strip()
-                        if iletisim_metni and iletisim_metni.lower() != 'nan':
-                            satirlar = iletisim_metni.split('\n')
+                        ham_telefon = str(row.get(telefon_sutunu, '')).strip()
+                        if ham_telefon and ham_telefon.lower() != 'nan':
+                            # Önce hücredeki satırları tek tek kontrol et (GSM/CEP/TEL etiketleri için)
+                            satirlar = ham_telefon.split('\n')
                             for satir in satirlar:
-                                if any(k in satir.upper() for k in ['GSM', 'CEP']):
+                                if any(k in satir.upper() for k in ['GSM', 'CEP', 'TEL', 'TELEFON', 'MOB']):
                                     no_bul = re.search(r'([+\d][\d\s()\-.]+)', satir)
-                                    if no_bul: gsm_no = no_bul.group(1).strip(); break
+                                    if no_bul: 
+                                        gsm_no = no_bul.group(1).strip()
+                                        break
+                            
+                            # Eğer etiketlerden hiçbir şey yakalanamadıysa, hücrenin içindeki ilk sayı dizisini çek
                             if not gsm_no:
-                                for satir in satirlar:
-                                    if any(k in satir.upper() for k in ['TEL', 'TELEFON']):
-                                        no_bul = re.search(r'([+\d][\d\s()\-.]+)', satir)
-                                        if no_bul: gsm_no = no_bul.group(1).strip(); break
-                            if not gsm_no:
-                                no_bul = re.search(r'([+\d][\d\s()\-.]+)', iletisim_metni)
-                                if no_bul: gsm_no = no_bul.group(1).strip()
+                                no_bul = re.search(r'([+\d][\d\s()\-.]+)', ham_telefon)
+                                if no_bul:
+                                    gsm_no = no_bul.group(1).strip()
+                                else:
+                                    # Hücrede parantez/artı yoksa düz sayıları temizle al
+                                    düz_rakamlar = "".join(re.findall(r'\d+', ham_telefon))
+                                    if düz_rakamlar:
+                                        gsm_no = düz_rakamlar
 
                     # vCard Blokları
                     vcard_satirlari = [
@@ -192,12 +205,10 @@ if yuklenen_dosya is not None:
                     use_container_width=True
                 )
                 
-                # YENİ VE GARANTİLİ ÖNİZLEME ALANI
+                # ÖNİZLEME ALANI
                 st.markdown("### 🔍 Üretilen Kartlar ve Rehber Önizlemeleri")
-                st.caption("Aşağıda, QR kodlar okutulduğunda telefona eklenecek bilgilerin dökümünü görebilirsiniz:")
                 
                 for item in gecerli_qr_listesi:
-                    # Sol sütun QR kod, sağ sütun temiz Streamlit rehber kartı
                     col1, col2 = st.columns([1, 1.2])
                     
                     with col1:
@@ -206,11 +217,8 @@ if yuklenen_dosya is not None:
                             st.image(item["dosya"], width=220)
                     
                     with col2:
-                        # Tamamen Streamlit'in kendi güvenli elementleriyle kart yapısı
                         st.subheader(f"👤 {item['isim']}")
                         st.caption(f"💼 {item['unvan']} | 🏛️ {item['sirket']}")
-                        
-                        # Detay kutuları
                         st.info(f"📞 **Cep Telefonu:** {item['telefon']}")
                         st.code(f"✉️ E-posta: {item['email']}\n📍 Adres: {item['adres']}", language="text")
                         st.success("✓ Telefon kamerasıyla okutulmaya hazır.")
