@@ -57,9 +57,9 @@ if yuklenen_dosya is not None:
             df = pd.read_excel(yuklenen_dosya)
         
         orijinal_sutunlar = [str(col).replace('_x0000_', '').strip() for col in df.columns]
-        df.columns = original_sutunlar
+        df.columns = orijinal_sutunlar
         
-        # Akıllı Sütun Eşleştirmeleri
+        # Akıllı Sütun Eşleştirmeleri (Tüm isimler 'orijinal_sutunlar' olarak eşitlendi)
         isim_sutunu = sutun_bul(orijinal_sutunlar, ['adı soyadı', 'ad soyad', 'isim', 'name', 'personel', 'ad', 'soyad'])
         unvan_sutunu = sutun_bul(orijinal_sutunlar, ['ünvan', 'unvan', 'title', 'görev', 'gorev'])
         sirket_sutunu = sutun_bul(orijinal_sutunlar, ['şirket', 'sirket', 'org', 'company', 'kurum'])
@@ -74,7 +74,6 @@ if yuklenen_dosya is not None:
             
             if st.button("🚀 Akıllı QR Kodları ve Telefon Önizlemelerini Üret", use_container_width=True):
                 
-                # Her üretimde temiz bir klasör açıyoruz ve SİLMİYORUZ (Streamlit görselleri okuyabilsin diye)
                 klasor_adi = "TAV_QR_Kodlari"
                 if os.path.exists(klasor_adi):
                     try:
@@ -205,7 +204,6 @@ if yuklenen_dosya is not None:
                     
                     with col1:
                         st.markdown("<br><br>", unsafe_allow_html=True)
-                        # Dosya yolundan resmi okuyoruz (Hata vermemesi için korundu)
                         if os.path.exists(item["dosya"]):
                             st.image(item["dosya"], width=230)
                         st.markdown(f"<p style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</p>", unsafe_allow_html=True)
@@ -245,7 +243,7 @@ if yuklenen_dosya is not None:
                         """, unsafe_allow_html=True)
                     st.markdown("<hr style='border: 1px dashed #e2e8f0; margin: 30px 0;'>", unsafe_allow_html=True)
                 
-                # Temizlik ve ZIP silme işlemini tamamen her şey bittikten sonraya taşıdık
+                # Temizlik işlemleri
                 if os.path.exists(f"{klasor_adi}.zip"):
                     os.remove(f"{klasor_adi}.zip")
 
