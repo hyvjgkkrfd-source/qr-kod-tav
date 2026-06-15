@@ -106,7 +106,6 @@ if yuklenen_dosya is not None:
                     unvan = temizle(row.get(unvan_sutunu, '')) if unvan_sutunu else ""
                     sirket = temizle(row.get(sirket_sutunu, '')) if sirket_sutunu else ""
                     email = temizle(row.get(email_sutunu, '')) if email_sutunu else ""
-                    web_sitesi = "www.tavsecurity.com" # Varsayılan kurumsal web adresi
                     
                     adres = temizle(row.get(adres_sutunu, '')).replace('\n', ' ') if adres_sutunu else ""
                     adres = re.sub(r'\s+', ' ', adres)
@@ -162,7 +161,7 @@ if yuklenen_dosya is not None:
                     dosya_yolu = f"{klasor_adi}/{temiz_ad}_{temiz_soyad}.png"
                     img.save(dosya_yolu)
                     
-                    # Önizleme ve Kart detayları için verileri sakla
+                    # Bilgileri sakla
                     gecerli_qr_listesi.append({
                         "isim": tam_isim,
                         "unvan": unvan if unvan else "Personel",
@@ -197,9 +196,7 @@ if yuklenen_dosya is not None:
                 st.markdown("### 🔍 Dijital Kartvizit Canlı Önizleme Paneli")
                 st.caption("QR kod okutulduğunda telefonda belirecek kurumsal kart yapısı:")
                 
-                # Her personeli şık bir yan yana blok düzeninde gösterelim
                 for item in gecerli_qr_listesi:
-                    # Sol tarafta QR kod, sağ tarafta telefon arayüzü olacak şekilde 2 sütun
                     col1, col2 = st.columns([1, 1.3])
                     
                     with col1:
@@ -208,7 +205,7 @@ if yuklenen_dosya is not None:
                         st.markdown(f"<p style='text-align: center; font-weight: bold; color: #0b2545;'>{item['isim']}</p>", unsafe_allow_html=True)
                     
                     with col2:
-                        # CSS ile Telefon Arayüzü (Mockup) Tasarımı
+                        # CRITICAL FIX: unsafe_allow_html=True eklenerek kodlar arayüze şıkça giydirildi
                         st.markdown(f"""
                         <div style="background-color: #f4f6f9; border: 12px solid #222; border-radius: 30px; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; max-width: 320px; box-shadow: 0px 4px 15px rgba(0,0,0,0.1); margin: 10px auto;">
                             <div style="width: 70px; height: 70px; background-color: #0b2545; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; margin: 0 auto 10px auto;">
@@ -243,7 +240,7 @@ if yuklenen_dosya is not None:
                         """, unsafe_allow_html=True)
                     st.markdown("<hr style='border: 1px dashed #e2e8f0; margin: 30px 0;'>", unsafe_allow_html=True)
                 
-                # Temizlik
+                # Klasör temizleme işlemi önizlemeler çizildikten sonra yapılacak
                 if os.path.exists(klasor_adi):
                     shutil.rmtree(klasor_adi)
                 if os.path.exists(f"{klasor_adi}.zip"):
