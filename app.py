@@ -28,7 +28,7 @@ st.markdown("""
     <div style='text-align: center; padding-bottom: 20px;'>
         <h1 style='color: #0b2545;'>📱 TAV Akıllı QR Kod Üretim Merkezi</h1>
         <p style='color: #5a6b7c; font-size: 16px;'>
-            TAV Kartvizit Formatına Özel Geliştirilmiş QR Kod Üretim Paneli
+            Web Sitesi Destekli Gelişmiş vCard Üretim Paneli
         </p>
     </div>
     <hr style='margin-top: 0; margin-bottom: 25px;'>
@@ -48,7 +48,7 @@ if yuklenen_dosya is not None:
         else:
             test_df = pd.read_excel(yuklenen_dosya, nrows=10)
         
-        # Gerçek başlık satırını bulma (İçinde 'Adı Soyadı' geçen satırı arıyoruz)
+        # Gerçek başlık satırını bulma
         skip_rows_value = 0
         for i, row in test_df.iterrows():
             row_str = " ".join([str(val).lower() for val in row.values])
@@ -56,13 +56,13 @@ if yuklenen_dosya is not None:
                 skip_rows_value = i + 1
                 break
         
-        # Dosyayı bulduğumuz doğru satırdan itibaren yeniden yüklüyoruz
+        # Dosyayı yeniden yüklüyoruz
         if yuklenen_dosya.name.endswith('.csv'):
             df = pd.read_csv(yuklenen_dosya, skiprows=skip_rows_value)
         else:
             df = pd.read_excel(yuklenen_dosya, skiprows=skip_rows_value)
             
-        # Sütun isimlerini tamamen temizle
+        # Sütun isimlerini temizle
         df.columns = [str(col).replace('_x0000_', '').strip() for col in df.columns]
         
         # TAV Şablonu Sütun Doğrulaması
@@ -72,10 +72,17 @@ if yuklenen_dosya is not None:
         email_sutunu = 'e-mail hesabı' if 'e-mail hesabı' in df.columns else None
         adres_sutunu = 'Adres (Türkçe)' if 'Adres (Türkçe)' in df.columns else None
         telefon_sutunu = 'İletişim bilgileri (Türkçe)' if 'İletişim bilgileri (Türkçe)' in df.columns else None
-
-        st.success(f"📋 TAV Kartvizit Şablonu başarıyla çözümlendi! Toplam **{len(df)}** personel işlenecek.")
         
-        if st.button("🚀 QR Kodları ve Önizlemeleri Üret", use_container_width=True):
+        # YENİ: Web Sitesi sütununu akıllıca yakala
+        web_sutunu = None
+        for col in df.columns:
+            if 'web' in col.lower() or 'site' in col.lower():
+                web_sutunu = col
+                break
+
+        st.success(f"📋 TAV Şablonu Çözümlendi! Web sitesi desteği aktif. Toplam **{len(df)}** personel işlenecek.")
+        
+        if st.button("🚀 Akıllı QR Kodları ve Önizlemeleri Üret", use_container_width=True):
             
             klasor_adi = "TAV_QR_Kodlari"
             if os.path.exists(klasor_adi):
@@ -113,7 +120,14 @@ if yuklenen_dosya is not None:
                 adres = temizle(row.get(adres_sutunu, '')).replace('\n', ' ') if adres_sutunu else ""
                 adres = re.sub(r'\s+', ' ', adres)
                 
-                # Telefon Ayıklama Algoritması
+                # YENİ: Web sitesi verisini temizle ve link formatına getir
+                web_sitesi = temizle(row.get(web_sutunu, '')) if web_sutunu else ""
+                if web_sitesi and not web_sitesi.startswith("http"):
+                    web_link = "https://" + web_sitesi
+                else:
+                    web_link = web_sitesi
+                
+                # Telefon Ayıklama
                 gsm_no = ""
                 if telefon_sutunu:
                     iletisim_metni = str(row.get(telefon_sutunu, '')).strip()
@@ -159,11 +173,16 @@ if yuklenen_dosya is not None:
                 if adres:
                     vcard_satirlari.append(f"item2.ADR;CHARSET=UTF-8:;;{adres};;;;")
                     vcard_satirlari.append("item2.X-ABLabel:Adres")
+                
+                # YENİ: vCard içine Web Sitesi ekleme bloğu
+                if web_link:
+                    vcard_satirlari.append(f"item3.URL:{web_link}")
+                    vcard_satirlari.append("item3.X-ABLabel:Web Sitesi")
 
                 vcard_satirlari.append("END:VCARD")
                 vcard = "\r\n".join(vcard_satirlari)
 
-                # QR Oluşturma (HATA VEREN KISIM DÜZELTİLDİ: qr.make(fit=True))
+                # QR Oluşturma
                 qr = qrcode.QRCode(box_size=8, border=4)
                 qr.add_data(vcard.encode('utf-8'))
                 qr.make(fit=True)
@@ -181,6 +200,7 @@ if yuklenen_dosya is not None:
                     "telefon": gsm_no if gsm_no else "Belirtilmedi",
                     "email": email if email else "Belirtilmedi",
                     "adres": adres if adres else "Belirtilmedi",
+                    "web": web_sitesi if web_sitesi else "Belirtilmedi", # Önizleme için sakla
                     "dosya": dosya_yolu
                 })
                 uretilen_adet += 1
@@ -219,7 +239,8 @@ if yuklenen_dosya is not None:
                     st.subheader(f"👤 {item['isim']}")
                     st.caption(f"💼 {item['unvan']} | 🏛️ {item['sirket']}")
                     st.info(f"📞 **Cep Telefonu:** {item['telefon']}")
-                    st.code(f"✉️ E-posta: {item['email']}\n📍 Adres: {item['adres']}", language="text")
+                    # YENİ: Önizleme ekranında web sitesini de listeliyoruz
+                    st.code(f"✉️ E-posta: {item['email']}\n📍 Adres: {item['adres']}\n🌐 Web: {item['web']}", language="text")
                     st.success("✓ Telefon kamerasıyla okutulmaya hazır.")
                     
                 st.markdown("---")
